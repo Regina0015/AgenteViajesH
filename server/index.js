@@ -83,14 +83,13 @@ async function tripFull(id) {
   const available = r2(Number(trip.advance_amount) - totalSpent);
   const pct = Number(trip.advance_amount) > 0 ? Math.round((totalSpent / Number(trip.advance_amount)) * 100) : 0;
 
+  // Panel de alertas minimalista: solo lo accionable. Los montos rechazados y
+  // el excedente ya se ven en los KPIs y en la liquidación.
   const alerts = [];
   const reviewCount = items.filter((i) => i.verdict === 'review').length;
   if (reviewCount > 0)
     alerts.push({ level: 'warn', text: `${reviewCount} concepto(s) en revisión humana por $${review.toFixed(2)}. Resuélvelos antes de liquidar.` });
   if (pct >= 80 && pct <= 100) alerts.push({ level: 'warn', text: `Llevas ${pct}% del anticipo consumido.` });
-  if (available < 0)
-    alerts.push({ level: 'bad', text: `Excediste el anticipo por $${Math.abs(available).toFixed(2)} — el excedente va a descuento de nómina [POL-TOPE].` });
-  if (rejected > 0) alerts.push({ level: 'bad', text: `$${rejected.toFixed(2)} rechazados por política — no serán reembolsados.` });
   const outside = expenses.filter((e) => e.expense_date && (e.expense_date < trip.start_date || e.expense_date > trip.end_date));
   if (outside.length) alerts.push({ level: 'warn', text: `${outside.length} gasto(s) con fecha fuera del rango del viaje (${trip.start_date} → ${trip.end_date}).` });
 
@@ -105,13 +104,12 @@ async function tripFull(id) {
     perDiem = { reference: ref, international: !!trip.international, params: p };
     const byDay = {};
     for (const e of expenses) byDay[e.expense_date] = r2((byDay[e.expense_date] || 0) + Number(e.total));
-    for (const [d, tot] of Object.entries(byDay)) {
-      if (tot > ref)
-        alerts.push({
-          level: 'warn',
-          text: `Día ${d}: gastaste $${tot.toFixed(2)}, arriba del presupuesto por día de $${ref.toFixed(2)} ${trip.international ? '(70 USD)' : '(700 MXN)'} [POL-DIA].`,
-        });
-    }
+    const diasArriba = Object.values(byDay).filter((tot) => tot > ref).length;
+    if (diasArriba > 0)
+      alerts.push({
+        level: 'warn',
+        text: `${diasArriba} día(s) arriba del presupuesto por día de $${ref.toFixed(2)} [POL-DIA] — el detalle está en los gastos por día.`,
+      });
   }
 
   return { ...trip, expenses, stats: { totalSpent, approved, rejected, review, available, pct }, alerts, perDiem };
