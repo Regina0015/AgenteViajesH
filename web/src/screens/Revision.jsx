@@ -7,8 +7,17 @@ import TicketResult from '../components/TicketResult.jsx';
 export default function Revision() {
   const [data, setData] = useState(null);
   const [notes, setNotes] = useState({});
+  const [partial, setPartial] = useState({});
   const [busy, setBusy] = useState(null);
   const [err, setErr] = useState(null);
+
+  const togglePartial = (id) =>
+    setPartial((p) => {
+      const c = { ...p };
+      if (id in c) delete c[id];
+      else c[id] = '';
+      return c;
+    });
 
   const load = useCallback(() => api('/review').then(setData).catch((e) => setErr(e.message)), []);
   useEffect(() => { load(); }, [load]);
@@ -18,15 +27,21 @@ export default function Revision() {
   const sum = (v) => data.sums.find((s) => s.verdict === v) || { n: 0, s: 0 };
   const pend = sum('review'), ok = sum('approved'), no = sum('rejected');
 
-  async function resolve(item, verdict) {
+  async function resolve(item, verdict, approvedAmount = null) {
     setBusy(item.id); setErr(null);
     try {
       await api('/items/' + item.id, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ verdict, note: notes[item.id] || null, reviewer: 'Marco Ruiz' }),
+        body: JSON.stringify({
+          verdict,
+          approved_amount: approvedAmount,
+          note: notes[item.id] || null,
+          reviewer: 'Marco Ruiz',
+        }),
       });
       setNotes((n) => ({ ...n, [item.id]: '' }));
+      setPartial((p) => { const c = { ...p }; delete c[item.id]; return c; });
       await load();
     } catch (e) { setErr(e.message); } finally { setBusy(null); }
   }
@@ -66,6 +81,20 @@ export default function Revision() {
               </span>
             ))}
           </div>
+        </>
+      )}
+
+      {data.tripAlerts?.length > 0 && (
+        <>
+          <div className="section-title">Alertas por viaje</div>
+          {data.tripAlerts.map((t) =>
+            t.alerts.map((a, i) => (
+              <div className={'alert ' + a.level} key={t.trip_id + '-' + i}>
+                {a.level === 'bad' ? '⛔' : '⚠️'}{' '}
+                <span><b>Viaje #{t.trip_id} · {t.destination} ({t.employee_name}):</b> {a.text}</span>
+              </div>
+            ))
+          )}
         </>
       )}
 
@@ -113,10 +142,31 @@ export default function Revision() {
               <button className="btn small" style={{ background: 'var(--green)' }} disabled={busy === it.id} onClick={() => resolve(it, 'approved')}>
                 ✓ Pasa
               </button>
+              <button className="btn small ghost" disabled={busy === it.id} onClick={() => togglePartial(it.id)}>
+                ◐ Parcial
+              </button>
               <button className="btn small" disabled={busy === it.id} onClick={() => resolve(it, 'rejected')}>
                 ✗ No pasa
               </button>
             </div>
+            {it.id in partial && (
+              <div className="partial-row">
+                <span>Del total de <b>{money(it.amount)}</b>, aprobar $</span>
+                <input
+                  type="number" min="0.01" max={it.amount} step="0.01"
+                  value={partial[it.id]}
+                  onChange={(e) => setPartial((p) => ({ ...p, [it.id]: e.target.value }))}
+                />
+                <span>→ se rechazan <b className="red">{money(Math.max(0, it.amount - (Number(partial[it.id]) || 0)))}</b></span>
+                <button
+                  className="btn small"
+                  disabled={busy === it.id || !(Number(partial[it.id]) > 0 && Number(partial[it.id]) < Number(it.amount))}
+                  onClick={() => resolve(it, 'partial', Number(partial[it.id]))}
+                >
+                  Confirmar parcial
+                </button>
+              </div>
+            )}
           </div>
         ))}
       </div>

@@ -7,14 +7,30 @@ import Stamp from './Stamp.jsx';
 // y un campo de comentario que se firma junto con la decisión.
 export default function TicketResult({ expense, onUpdate, compact, reviewer }) {
   const [note, setNote] = useState('');
-  async function setVerdict(itemId, verdict) {
-    const updated = await api('/items/' + itemId, {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ verdict, reviewer: reviewer || null, note: reviewer ? note.trim() || null : null }),
-    });
-    if (reviewer) setNote('');
-    onUpdate?.(updated);
+  const [partialId, setPartialId] = useState(null);
+  const [partialAmt, setPartialAmt] = useState('');
+  const [err, setErr] = useState(null);
+
+  async function setVerdict(itemId, verdict, approvedAmount = null) {
+    setErr(null);
+    try {
+      const updated = await api('/items/' + itemId, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          verdict,
+          approved_amount: approvedAmount,
+          reviewer: reviewer || null,
+          note: reviewer ? note.trim() || null : null,
+        }),
+      });
+      if (reviewer) setNote('');
+      setPartialId(null);
+      setPartialAmt('');
+      onUpdate?.(updated);
+    } catch (e) {
+      setErr(e.message);
+    }
   }
 
   const e = expense;
@@ -45,13 +61,30 @@ export default function TicketResult({ expense, onUpdate, compact, reviewer }) {
               {money(it.amount)}
             </span>
             {onUpdate && (
-              <span className="item-actions" title="Corrección manual">
-                <button className={'vbtn ok' + (it.verdict === 'approved' ? ' sel' : '')} onClick={() => setVerdict(it.id, 'approved')} title="Aprobar">✓</button>
-                <button className={'vbtn no' + (it.verdict === 'rejected' ? ' sel' : '')} onClick={() => setVerdict(it.id, 'rejected')} title="Rechazar">✗</button>
+              <span className="item-actions" title="Decisión final">
+                <button className={'vbtn ok' + (it.verdict === 'approved' ? ' sel' : '')} onClick={() => setVerdict(it.id, 'approved')} title="Aprobar todo">✓</button>
+                {reviewer && (
+                  <button className={'vbtn rev' + (partialId === it.id ? ' sel' : '')} title="Aprobación parcial (indica el monto)"
+                    onClick={() => { setPartialId(partialId === it.id ? null : it.id); setPartialAmt(''); }}>◐</button>
+                )}
+                <button className={'vbtn no' + (it.verdict === 'rejected' ? ' sel' : '')} onClick={() => setVerdict(it.id, 'rejected')} title="Rechazar todo">✗</button>
                 <button className={'vbtn rev' + (it.verdict === 'review' ? ' sel' : '')} onClick={() => setVerdict(it.id, 'review')} title="Enviar a revisión">?</button>
               </span>
             )}
           </div>
+          {partialId === it.id && (
+            <div className="partial-row">
+              <span>Del total de <b>{money(it.amount)}</b>, aprobar $</span>
+              <input type="number" min="0.01" max={it.amount} step="0.01" value={partialAmt}
+                onChange={(ev) => setPartialAmt(ev.target.value)} />
+              <span>→ se rechazan <b className="red">{money(Math.max(0, it.amount - (Number(partialAmt) || 0)))}</b></span>
+              <button className="btn small"
+                disabled={!(Number(partialAmt) > 0 && Number(partialAmt) < Number(it.amount))}
+                onClick={() => setVerdict(it.id, 'partial', Number(partialAmt))}>
+                Confirmar
+              </button>
+            </div>
+          )}
           <div className="item-reason">
             {it.reason} {it.policy_code ? <b>[{it.policy_code}]</b> : null}
             {it.review_note
@@ -61,6 +94,7 @@ export default function TicketResult({ expense, onUpdate, compact, reviewer }) {
         </div>
       ))}
 
+      {err && <div className="err">{err}</div>}
       {reviewer && onUpdate && (
         <input
           className="rev-note"

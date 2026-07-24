@@ -190,19 +190,46 @@ app.post('/api/trips/:id/expenses', upload.single('photo'), async (req, res) => 
 
 // Corrección manual de un concepto (empleado o revisor).
 // Conserva la explicación del agente y guarda aparte la justificación humana.
+// verdict='partial' + approved_amount divide el concepto: parte aprobada + parte rechazada.
 app.patch('/api/items/:id', async (req, res) => {
-  const { verdict, category, note, reviewer } = req.body;
-  if (verdict && !['approved', 'rejected', 'review'].includes(verdict))
+  const { verdict, category, note, reviewer, approved_amount } = req.body;
+  if (verdict && !['approved', 'rejected', 'review', 'partial'].includes(verdict))
     return res.status(400).json({ error: 'Veredicto inválido' });
   const [item] = await q('SELECT * FROM expense_items WHERE id=$1', [req.params.id]);
   if (!item) return res.status(404).json({ error: 'Concepto no encontrado' });
 
-  await q(
-    `UPDATE expense_items SET verdict=COALESCE($1,verdict), category=COALESCE($2,category),
-     manually_corrected=1, review_note=COALESCE($3,review_note), reviewed_by=COALESCE($4,reviewed_by)
-     WHERE id=$5`,
-    [verdict || null, category || null, note || null, reviewer || null, item.id]
-  );
+  if (verdict === 'partial') {
+    const amt = r2(approved_amount);
+    if (!(amt > 0) || amt >= r2(item.amount))
+      return res.status(400).json({ error: `El monto aprobado debe ser mayor a $0 y menor al total del concepto ($${r2(item.amount).toFixed(2)}).` });
+    const rejectedPart = r2(r2(item.amount) - amt);
+    await q(
+      `UPDATE expense_items SET amount=$1, verdict='approved', reason=$2,
+       manually_corrected=1, review_note=COALESCE($3,review_note), reviewed_by=COALESCE($4,reviewed_by) WHERE id=$5`,
+      [amt, `Aprobación parcial del revisor: $${amt.toFixed(2)} de $${r2(item.amount).toFixed(2)}.`, note || null, reviewer || null, item.id]
+    );
+    await q(
+      `INSERT INTO expense_items(expense_id,description,amount,category,verdict,policy_code,reason,manually_corrected,reviewed_by,review_note)
+       VALUES($1,$2,$3,$4,'rejected',$5,$6,1,$7,$8)`,
+      [
+        item.expense_id,
+        `Parte no aprobada — ${item.description}`.slice(0, 120),
+        rejectedPart,
+        item.category,
+        item.policy_code,
+        `Rechazo parcial del revisor: $${rejectedPart.toFixed(2)} de $${r2(item.amount).toFixed(2)}.`,
+        reviewer || null,
+        note || null,
+      ]
+    );
+  } else {
+    await q(
+      `UPDATE expense_items SET verdict=COALESCE($1,verdict), category=COALESCE($2,category),
+       manually_corrected=1, review_note=COALESCE($3,review_note), reviewed_by=COALESCE($4,reviewed_by)
+       WHERE id=$5`,
+      [verdict || null, category || null, note || null, reviewer || null, item.id]
+    );
+  }
   const items = await q('SELECT * FROM expense_items WHERE expense_id=$1 ORDER BY id', [item.expense_id]);
   const t = computeTotals(items);
   const [e] = await q(
@@ -366,7 +393,17 @@ app.get('/api/review', async (_req, res) => {
       )
     : [];
   for (const e of expenses) e.items = allItems.filter((i) => i.expense_id === e.id);
-  res.json({ pending, resolved, sums, byCat, expenses });
+
+  // Alertas por viaje (fechas fuera de rango, per diem, excedentes…): mismas que ve el empleado
+  const tripRows = await q('SELECT id FROM trips ORDER BY id');
+  const tripAlerts = [];
+  for (const tr of tripRows) {
+    const t = await tripFull(tr.id);
+    if (t && t.alerts.length)
+      tripAlerts.push({ trip_id: t.id, destination: t.destination, employee_name: t.employee_name, alerts: t.alerts });
+  }
+
+  res.json({ pending, resolved, sums, byCat, expenses, tripAlerts });
 });
 
 // ── Liquidación ───────────────────────────────────────────────────
