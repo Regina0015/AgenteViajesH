@@ -5,8 +5,8 @@ import TicketResult from '../components/TicketResult.jsx';
 const SUGERENCIAS = [
   '¿Cuánto me queda de presupuesto?',
   'Gasté 350 en un taxi al hotel',
+  'Ayer se me pasó registrar una comida de 240',
   '¿Qué me han rechazado y por qué?',
-  '¿Qué dice la política sobre el alcohol?',
 ];
 
 export default function Chat({ trip }) {
@@ -62,9 +62,7 @@ export default function Chat({ trip }) {
                 {m.content}
                 {m.expense && (
                   <div style={{ marginTop: 10 }}>
-                    <TicketResult expense={m.expense} compact onUpdate={(u) =>
-                      setMsgs((all) => all.map((x, j) => (j === i ? { ...x, expense: u } : x)))
-                    } />
+                    <TicketResult expense={m.expense} compact />
                   </div>
                 )}
               </div>

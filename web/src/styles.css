@@ -304,6 +304,25 @@ label.fld input, label.fld select { width: 100%; }
 .chat-input { display: flex; gap: 10px; }
 .chat-input input { flex: 1; font-family: var(--body); font-size: 15px; }
 
+/* Selector de día (Hoy / Ayer / Otra fecha) */
+.sug-chip.sel-day { background: var(--red); border-color: var(--red); color: #fff; font-weight: 600; }
+
+/* Encabezado de cada día en el estado del viaje */
+.day-head {
+  display: flex; justify-content: space-between; align-items: baseline; gap: 12px; flex-wrap: wrap;
+  font-family: var(--disp); font-stretch: condensed; font-weight: 800;
+  text-transform: uppercase; letter-spacing: .1em; font-size: 13.5px;
+  color: var(--cream-text); margin: 0 0 8px; padding-bottom: 6px;
+  border-bottom: 1px dashed var(--desk-line);
+}
+.day-head .day-total { font-family: var(--mono); font-size: 13px; letter-spacing: 0; text-transform: none; }
+.day-head em { font-style: normal; font-family: var(--body); font-weight: 400; font-size: 12.5px; }
+.day-head .over-ref { color: var(--amber); }
+.day-head .ok-ref { color: var(--cream-muted); }
+
+/* Acento visual del modo revisor: sello verde en lugar de rojo */
+.revisor-mode .brand h1 .tld { color: var(--green); }
+
 .trip-list { display: grid; gap: 12px; }
 .expense-list { display: grid; gap: 14px; }
 .result-pop { animation: pop .35s cubic-bezier(.2,.9,.3,1.2); }

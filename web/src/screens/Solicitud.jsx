@@ -2,8 +2,12 @@ import { useEffect, useMemo, useState } from 'react';
 import { api, money } from '../api.js';
 import Stamp from '../components/Stamp.jsx';
 
-export default function Solicitud({ trips, reload, onGoCapture }) {
-  const [form, setForm] = useState({ destination: '', purpose: '', start_date: '', end_date: '', requested_amount: '', international: false });
+const iso = (d) => d.toISOString().slice(0, 10);
+const HOY = iso(new Date());
+const MANANA = iso(new Date(Date.now() + 86400000));
+
+export default function Solicitud({ trips, reload, onCreated, onGoCapture }) {
+  const [form, setForm] = useState({ destination: '', purpose: '', start_date: HOY, end_date: MANANA, requested_amount: '', international: false });
   const [perDiem, setPerDiem] = useState(null);
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState(null);
@@ -27,7 +31,7 @@ export default function Solicitud({ trips, reload, onGoCapture }) {
   async function create() {
     setBusy(true); setErr(null);
     try {
-      await api('/trips', {
+      const t = await api('/trips', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -37,8 +41,9 @@ export default function Solicitud({ trips, reload, onGoCapture }) {
           employee_id: 1,
         }),
       });
-      setForm({ destination: '', purpose: '', start_date: '', end_date: '', requested_amount: '', international: false });
+      setForm({ destination: '', purpose: '', start_date: HOY, end_date: MANANA, requested_amount: '', international: false });
       await reload();
+      onCreated?.(t.id);
     } catch (e) { setErr(e.message); } finally { setBusy(false); }
   }
 

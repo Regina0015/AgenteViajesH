@@ -260,8 +260,14 @@ ${pols}`;
 function mockChat(message, t) {
   const m = message.toLowerCase();
   const money = (n) => `$${Number(n).toFixed(2)}`;
-  if (/gast|pagu|compr|regist/.test(m) && /\d/.test(m))
-    return { reply: 'Va, lo registro y lo reviso contra la política… 🧾', action: { type: 'register_expense', text: message, date: null } };
+  if (/gast|pagu|compr|regist|se me pas/.test(m) && /\d/.test(m)) {
+    const date = /antier|anteayer/.test(m)
+      ? new Date(Date.now() - 2 * 86400000).toISOString().slice(0, 10)
+      : /ayer/.test(m)
+        ? new Date(Date.now() - 86400000).toISOString().slice(0, 10)
+        : null;
+    return { reply: 'Va, lo registro y lo reviso contra la política… 🧾', action: { type: 'register_expense', text: message, date } };
+  }
   if (/queda|disponible|presupuesto|cu[aá]nto llevo|saldo/.test(m))
     return { reply: `Llevas ${money(t.stats.totalSpent)} gastados de ${money(t.advance_amount)} de anticipo: te quedan ${money(t.stats.available)}. 📊`, action: null };
   if (/rechaz|no pas/.test(m))

@@ -158,6 +158,8 @@ Puedes hacer dos cosas:
    qué dice la política, fechas, etc.) usando SOLO el contexto.
 2. REGISTRAR un gasto cuando la persona lo narre (ej. "gasté 350 en un taxi al hotel",
    "pagué la cena 680 con 140 de cervezas"). En ese caso pon el texto del gasto en action.
+   Fechas: si dicen "ayer", "antier" o un día concreto, calcula la fecha exacta usando la
+   fecha de hoy del contexto y ponla en action.date (YYYY-MM-DD). Si no dicen día, date=null (hoy).
 
 Responde ÚNICAMENTE este JSON:
 {"reply":"tu respuesta en español",
