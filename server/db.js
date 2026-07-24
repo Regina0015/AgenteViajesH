@@ -137,7 +137,7 @@ export async function initDb() {
   }
   if (!isPg) {
     const { DatabaseSync } = await import('node:sqlite');
-    sq = new DatabaseSync(path.join(__dirname, 'talon.db'));
+    sq = new DatabaseSync(process.env.SQLITE_PATH || path.join(__dirname, 'talon.db'));
     console.log('[db] ⚠️  DATABASE_URL vacío → usando SQLite local (fallback de desarrollo). Pega el Service URI de Aiven en .env para usar Postgres.');
   }
   for (const t of TABLES) await q(ddl(t));
