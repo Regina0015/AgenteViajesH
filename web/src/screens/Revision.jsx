@@ -42,6 +42,11 @@ export default function Revision() {
   return (
     <div>
       <div className="section-title">Mesa de revisión · Marco Ruiz (Finanzas) · todos los viajes</div>
+      <p className="screen-help">
+        Todo lo que el agente no pudo decidir solo llega aquí. Lee la explicación de la IA, ajusta la
+        categoría si hace falta, escribe tu justificación y decide: ✓ Pasa o ✗ No pasa. Tu decisión
+        queda en el expediente junto a la de la IA.
+      </p>
 
       <div className="kpis">
         <div className="ticket kpi"><span className="v amber">{Number(pend.n)}</span><span className="l">Por revisar</span></div>

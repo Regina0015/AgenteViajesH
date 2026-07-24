@@ -5,7 +5,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { initDb, q, isPg } from './db.js';
 import { applyPolicies, computeTotals, buildSummary, r2 } from './rules.js';
-import { extractItems, azureReady } from './agent.js';
+import { extractItems, azureReady, chatAgent } from './agent.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 await initDb();
@@ -42,13 +42,13 @@ app.get('/api/trips', async (_req, res) =>
 );
 
 app.post('/api/trips', async (req, res) => {
-  const { employee_id = 1, destination, purpose, start_date, end_date, requested_amount } = req.body;
+  const { employee_id = 1, destination, purpose, start_date, end_date, requested_amount, international } = req.body;
   if (!destination || !start_date || !end_date)
     return res.status(400).json({ error: 'Faltan campos: destino y fechas del viaje.' });
   const [t] = await q(
-    `INSERT INTO trips(employee_id,destination,purpose,start_date,end_date,requested_amount,status)
-     VALUES($1,$2,$3,$4,$5,$6,'requested') RETURNING *`,
-    [employee_id, destination, purpose || '', start_date, end_date, r2(requested_amount)]
+    `INSERT INTO trips(employee_id,destination,purpose,start_date,end_date,requested_amount,international,status)
+     VALUES($1,$2,$3,$4,$5,$6,$7,'requested') RETURNING *`,
+    [employee_id, destination, purpose || '', start_date, end_date, r2(requested_amount), international ? 1 : 0]
   );
   res.json(t);
 });
@@ -94,7 +94,27 @@ async function tripFull(id) {
   const outside = expenses.filter((e) => e.expense_date && (e.expense_date < trip.start_date || e.expense_date > trip.end_date));
   if (outside.length) alerts.push({ level: 'warn', text: `${outside.length} gasto(s) con fecha fuera del rango del viaje (${trip.start_date} → ${trip.end_date}).` });
 
-  return { ...trip, expenses, stats: { totalSpent, approved, rejected, review, available, pct }, alerts };
+  // Per diem: referencia diaria configurada (alerta, no rechazo)
+  let perDiem = null;
+  const [pd] = await q(`SELECT params FROM policies WHERE code='POL-PERDIEM' AND active=1`);
+  if (pd) {
+    const p = JSON.parse(pd.params || '{}');
+    const ref = trip.international
+      ? r2((p.ext_per_day_usd ?? 70) * (p.usd_mxn ?? 18.5))
+      : (p.mx_per_day ?? 700);
+    perDiem = { reference: ref, international: !!trip.international, params: p };
+    const byDay = {};
+    for (const e of expenses) byDay[e.expense_date] = r2((byDay[e.expense_date] || 0) + Number(e.total));
+    for (const [d, tot] of Object.entries(byDay)) {
+      if (tot > ref)
+        alerts.push({
+          level: 'warn',
+          text: `Día ${d}: gastaste $${tot.toFixed(2)}, arriba de la referencia diaria de $${ref.toFixed(2)} ${trip.international ? '(70 USD)' : '(700 MXN)'} [POL-PERDIEM].`,
+        });
+    }
+  }
+
+  return { ...trip, expenses, stats: { totalSpent, approved, rejected, review, available, pct }, alerts, perDiem };
 }
 
 app.get('/api/trips/:id', async (req, res) => {
@@ -192,6 +212,95 @@ app.patch('/api/items/:id', async (req, res) => {
   );
   e.items = items;
   res.json(e);
+});
+
+// ── Chat conversacional con Talón ─────────────────────────────────
+async function registerTextExpense(trip, text, expense_date) {
+  const t0 = Date.now();
+  const ex = await extractItems({ text, imageBase64: null, mime: null });
+  if (!ex.items.length) return null;
+  const date = expense_date || ex.date || new Date().toISOString().slice(0, 10);
+  const result = await applyPolicies({ items: ex.items, tripId: trip.id, expenseDate: date, hasReceipt: 1 });
+  const summary = ex.note ? `${ex.note} ${result.summary}` : result.summary;
+  const [e] = await q(
+    `INSERT INTO expenses(trip_id,description,merchant,expense_date,total,source,has_receipt,status,approved_amount,rejected_amount,review_amount,agent_summary)
+     VALUES($1,$2,$3,$4,$5,'chat',1,$6,$7,$8,$9,$10) RETURNING *`,
+    [trip.id, text.slice(0, 120), ex.merchant, date, result.total, result.status, result.approved, result.rejected, result.review, summary]
+  );
+  for (const it of result.items) {
+    await q(
+      `INSERT INTO expense_items(expense_id,description,amount,category,verdict,policy_code,reason) VALUES($1,$2,$3,$4,$5,$6,$7)`,
+      [e.id, it.description, it.amount, it.category, it.verdict, it.policy_code, it.reason]
+    );
+  }
+  await q(`INSERT INTO agent_logs(expense_id,mode,model,latency_ms,input_summary,output_json) VALUES($1,$2,$3,$4,$5,$6)`, [
+    e.id, ex.mode + '-chat', ex.model || '', Date.now() - t0, text, JSON.stringify(ex.items),
+  ]);
+  e.items = await q('SELECT * FROM expense_items WHERE expense_id=$1 ORDER BY id', [e.id]);
+  return e;
+}
+
+function chatContext(t) {
+  const money = (n) => `$${Number(n).toFixed(2)}`;
+  const pols = t._policies.map((p) => `- [${p.code}] ${p.name} ${p.params}`).join('\n');
+  const exps = t.expenses
+    .map((e) => `- ${e.expense_date} ${e.description}: total ${money(e.total)} → ${e.status} (ok ${money(e.approved_amount)}, no ${money(e.rejected_amount)}, rev ${money(e.review_amount)})`)
+    .join('\n');
+  return `Empleada: ${t.employee_name}. Viaje #${t.id} a ${t.destination} (${t.purpose}), del ${t.start_date} al ${t.end_date}, ${t.international ? 'EXTRANJERO' : 'nacional'}.
+Anticipo autorizado: ${money(t.advance_amount)}. Gastado: ${money(t.stats.totalSpent)}. Disponible: ${money(t.stats.available)}.
+Aprobado: ${money(t.stats.approved)} · Rechazado: ${money(t.stats.rejected)} · En revisión: ${money(t.stats.review)}.
+Referencia diaria (per diem): ${t.perDiem ? money(t.perDiem.reference) + (t.international ? ' (70 USD/día)' : ' (700 MXN/día)') : 'n/a'}.
+Fecha de hoy: ${new Date().toISOString().slice(0, 10)}.
+Gastos registrados:
+${exps || '(ninguno todavía)'}
+Políticas activas:
+${pols}`;
+}
+
+function mockChat(message, t) {
+  const m = message.toLowerCase();
+  const money = (n) => `$${Number(n).toFixed(2)}`;
+  if (/gast|pagu|compr|regist/.test(m) && /\d/.test(m))
+    return { reply: 'Va, lo registro y lo reviso contra la política… 🧾', action: { type: 'register_expense', text: message, date: null } };
+  if (/queda|disponible|presupuesto|cu[aá]nto llevo|saldo/.test(m))
+    return { reply: `Llevas ${money(t.stats.totalSpent)} gastados de ${money(t.advance_amount)} de anticipo: te quedan ${money(t.stats.available)}. 📊`, action: null };
+  if (/rechaz|no pas/.test(m))
+    return { reply: `Se han rechazado ${money(t.stats.rejected)} por política (alcohol, gastos personales o excedentes). Puedes ver el detalle en Estado del viaje.`, action: null };
+  if (/pol[ií]tica|alcohol|l[ií]mite|regla/.test(m))
+    return { reply: 'La política vive en la base de datos: alcohol nunca se reembolsa, sin comprobante arriba de $100 va a revisión, propina máx. 15%, y hay límites por categoría y per diem diario. 📋', action: null };
+  return { reply: 'Soy Talón 🧾 Puedo decirte cuánto te queda, qué se rechazó y por qué, o registrar un gasto si me lo cuentas (ej. "gasté 350 en un taxi").', action: null };
+}
+
+app.post('/api/chat', async (req, res) => {
+  try {
+    const { trip_id, messages = [] } = req.body;
+    const t = await tripFull(trip_id);
+    if (!t) return res.status(404).json({ error: 'Viaje no encontrado' });
+    t._policies = (await q('SELECT code,name,params FROM policies WHERE active=1')).map((p) => ({ ...p }));
+
+    const lastUser = [...messages].reverse().find((m) => m.role === 'user')?.content || '';
+    let out;
+    if (azureReady()) {
+      try {
+        out = await chatAgent({ context: chatContext(t), messages });
+      } catch (err) {
+        console.error('[chat] Azure falló, usando respuesta local:', err.message);
+        out = mockChat(lastUser, t);
+      }
+    } else {
+      out = mockChat(lastUser, t);
+    }
+
+    let expense = null;
+    if (out.action?.type === 'register_expense' && out.action.text) {
+      expense = await registerTextExpense(t, out.action.text, out.action.date || null);
+      if (!expense) out.reply += ' …aunque no encontré un monto claro. ¿Me lo repites con la cantidad? 🙏';
+    }
+    res.json({ reply: out.reply, expense });
+  } catch (err) {
+    console.error('[chat]', err);
+    res.status(500).json({ error: 'El chat falló: ' + err.message });
+  }
 });
 
 // ── Dashboard del revisor (finanzas) ──────────────────────────────

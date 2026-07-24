@@ -10,10 +10,10 @@
   --paper: #f7f2e6;
   --paper-2: #efe8d6;
   --paper-shade: #e4dcc6;
-  --ink: #1c1b18;
-  --ink-soft: #57544b;
-  --cream-text: #ece7da;
-  --cream-muted: #9a978c;
+  --ink: #17160f;
+  --ink-soft: #4c4a41;
+  --cream-text: #f1ede2;
+  --cream-muted: #b6b3a6;
   --red: #d93a2b;
   --red-deep: #b02e22;
   --green: #1f8a5d;
@@ -31,8 +31,8 @@ body {
     var(--desk);
   color: var(--cream-text);
   font-family: var(--body);
-  font-size: 15px;
-  line-height: 1.5;
+  font-size: 16px;
+  line-height: 1.55;
   min-height: 100vh;
 }
 
@@ -72,15 +72,13 @@ body {
 nav.tabs { display: flex; gap: 4px; flex-wrap: wrap; }
 .tab {
   font-family: var(--disp); font-stretch: condensed; font-weight: 700;
-  letter-spacing: .1em; text-transform: uppercase; font-size: 13px;
+  letter-spacing: .08em; text-transform: uppercase; font-size: 14px;
   background: none; border: 1px solid transparent; color: var(--cream-muted);
-  padding: 9px 14px; border-radius: 9px; cursor: pointer; transition: all .15s;
+  padding: 10px 16px; border-radius: 9px; cursor: pointer; transition: all .15s;
 }
-.tab:hover { color: var(--paper); }
+.tab:hover { color: var(--paper); background: var(--desk-3); }
 .tab.active { background: var(--red); border-color: var(--red); color: #fff; }
-.tab .n {
-  font-family: var(--mono); font-size: 10px; opacity: .65; margin-right: 6px;
-}
+.tab .n { font-size: 15px; margin-right: 7px; }
 .trip-pick { display: flex; align-items: center; gap: 8px; }
 .trip-pick label { font-family: var(--mono); font-size: 11px; letter-spacing: .1em; color: var(--cream-muted); text-transform: uppercase; }
 
@@ -262,6 +260,49 @@ label.fld input, label.fld select { width: 100%; }
   background: rgba(217,58,43,.12); border: 1px solid rgba(217,58,43,.4);
   color: #ff9d92; border-radius: 9px; padding: 10px 14px; font-size: 13px; margin: 10px 0;
 }
+
+/* Texto de ayuda bajo cada título de pantalla: qué hace y cómo se usa */
+.screen-help {
+  color: var(--cream-muted); font-size: 14.5px; max-width: 68ch;
+  margin: -4px 0 18px; line-height: 1.5;
+}
+.hint-inline { font-size: 13px; color: var(--cream-muted); margin-top: 4px; }
+
+/* ── Chat con Talón ───────────────────────────────────────────── */
+.chat-wrap {
+  display: flex; flex-direction: column; gap: 12px;
+  max-width: 760px; height: min(64vh, 640px);
+}
+.chat-log {
+  flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 10px;
+  background: var(--desk-2); border: 1px solid var(--desk-line); border-radius: 14px;
+  padding: 16px;
+}
+.bubble-row { display: flex; }
+.bubble-row.user { justify-content: flex-end; }
+.bubble {
+  max-width: 85%; padding: 10px 14px; border-radius: 14px; font-size: 15px; line-height: 1.5;
+}
+.bubble.user {
+  background: var(--red); color: #fff; border-bottom-right-radius: 4px;
+}
+.bubble.assistant {
+  background: var(--paper); color: var(--ink); border-bottom-left-radius: 4px;
+  box-shadow: 0 3px 10px rgba(0,0,0,.3);
+}
+.bubble-who {
+  font-family: var(--disp); font-stretch: condensed; font-weight: 800; font-size: 11px;
+  letter-spacing: .14em; text-transform: uppercase; color: var(--red-deep); margin-bottom: 3px;
+}
+.chips-row { display: flex; gap: 8px; flex-wrap: wrap; }
+.sug-chip {
+  background: var(--desk-3); color: var(--cream-text); border: 1px solid var(--desk-line);
+  border-radius: 999px; padding: 7px 14px; font-size: 13.5px; cursor: pointer; transition: all .15s;
+}
+.sug-chip:hover { border-color: var(--red); color: #fff; }
+.sug-chip:disabled { opacity: .4; cursor: default; }
+.chat-input { display: flex; gap: 10px; }
+.chat-input input { flex: 1; font-family: var(--body); font-size: 15px; }
 
 .trip-list { display: grid; gap: 12px; }
 .expense-list { display: grid; gap: 14px; }

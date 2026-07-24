@@ -37,6 +37,7 @@ const TABLES = [
     end_date TEXT,
     requested_amount DOUBLE PRECISION DEFAULT 0,
     advance_amount DOUBLE PRECISION DEFAULT 0,
+    international INT DEFAULT 0,
     status TEXT DEFAULT 'requested',
     created_at TIMESTAMPTZ DEFAULT now()
   )`,
@@ -144,7 +145,24 @@ export async function initDb() {
   for (const col of ['reviewed_by TEXT', 'review_note TEXT']) {
     try { await q(`ALTER TABLE expense_items ADD COLUMN ${col}`); } catch { /* ya existe */ }
   }
+  try { await q(`ALTER TABLE trips ADD COLUMN international INT DEFAULT 0`); } catch { /* ya existe */ }
   await seedIfEmpty();
+  await ensureNewPolicies();
+}
+
+// Políticas agregadas después del seed inicial (INSERT solo si faltan)
+async function ensureNewPolicies() {
+  const NEW = [
+    ['POL-PERDIEM', 'Presupuesto diario de referencia (per diem)', 'per_diem', '*',
+      '{"mx_per_day":700,"ext_per_day_usd":70,"usd_mxn":18.5}'],
+  ];
+  for (const p of NEW) {
+    const found = await q(`SELECT id FROM policies WHERE code=$1`, [p[0]]);
+    if (!found.length) {
+      await q(`INSERT INTO policies(code,name,rule_type,category,params) VALUES($1,$2,$3,$4,$5)`, p);
+      console.log(`[db] Política nueva sembrada: ${p[0]}`);
+    }
+  }
 }
 
 // ── Seed: solo INSERTa cuando la BD está vacía. Nunca borra nada. ──

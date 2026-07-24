@@ -146,6 +146,59 @@ function mockFromPhoto() {
   };
 }
 
+// ── Chat conversacional ───────────────────────────────────────────
+const CHAT_SYSTEM = (context) => `Eres "Talón", el agente de viáticos de la empresa. Hablas español mexicano,
+breve, claro y amable (1-3 oraciones, puedes usar un emoji). Atiendes a la persona empleada durante su viaje.
+
+CONTEXTO REAL (única fuente de verdad, no inventes cifras):
+${context}
+
+Puedes hacer dos cosas:
+1. RESPONDER preguntas sobre su viaje (presupuesto, cuánto queda, qué se rechazó y por qué,
+   qué dice la política, fechas, etc.) usando SOLO el contexto.
+2. REGISTRAR un gasto cuando la persona lo narre (ej. "gasté 350 en un taxi al hotel",
+   "pagué la cena 680 con 140 de cervezas"). En ese caso pon el texto del gasto en action.
+
+Responde ÚNICAMENTE este JSON:
+{"reply":"tu respuesta en español",
+ "action": null | {"type":"register_expense","text":"descripción textual del gasto con su monto","date":"YYYY-MM-DD o null"}}
+
+Si narran un gasto, en reply di algo corto tipo "Va, lo registro y lo reviso contra la política…"
+(el sistema añadirá el veredicto). Si piden algo fuera de viáticos, redirígelos con amabilidad.`;
+
+export async function chatAgent({ context, messages }) {
+  const url =
+    CFG.chatUrl ||
+    `${CFG.endpoint.replace(/\/+$/, '')}/openai/deployments/${CFG.deployment}/chat/completions?api-version=${CFG.apiVersion}`;
+  const body = {
+    messages: [
+      { role: 'system', content: CHAT_SYSTEM(context) },
+      ...messages.slice(-10).map((m) => ({ role: m.role === 'assistant' ? 'assistant' : 'user', content: String(m.content).slice(0, 1500) })),
+    ],
+    temperature: 0.4,
+    max_tokens: 500,
+    response_format: { type: 'json_object' },
+  };
+  const ctrl = new AbortController();
+  const timer = setTimeout(() => ctrl.abort(), 45000);
+  try {
+    const r = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'api-key': CFG.key },
+      body: JSON.stringify(body),
+      signal: ctrl.signal,
+    });
+    const raw = await r.text();
+    if (!r.ok) throw new Error(`Azure ${r.status}: ${raw.slice(0, 200)}`);
+    let content = JSON.parse(raw).choices?.[0]?.message?.content || '{}';
+    content = content.replace(/^```(?:json)?\s*/i, '').replace(/```\s*$/, '').trim();
+    const parsed = JSON.parse(content);
+    return { reply: String(parsed.reply || '…'), action: parsed.action || null };
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
 export async function extractItems({ text, imageBase64, mime }) {
   if (azureReady()) {
     try {

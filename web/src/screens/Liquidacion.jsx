@@ -30,6 +30,10 @@ export default function Liquidacion({ trip, reload }) {
     <div className="cols">
       <div>
         <div className="section-title">Liquidación · viaje #{trip.id} {trip.destination}</div>
+        <p className="screen-help">
+          El cierre del viaje: se compara lo gastado contra el anticipo, lo rechazado lo absorbe el
+          empleado y el resultado va a nómina (descuento) o de regreso a la empresa (devolución).
+        </p>
 
         <div className="ticket punched-top punched-bottom" style={{ maxWidth: 560 }}>
           <h3>Liquidación de gastos de viaje</h3>

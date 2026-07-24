@@ -47,6 +47,10 @@ export default function Captura({ trip }) {
     <div className="cols">
       <div>
         <div className="section-title">Registrar gasto · viaje #{trip.id} {trip.destination}</div>
+        <p className="screen-help">
+          Toma la foto del ticket (o descríbelo con texto) y la IA hace el resto: separa cada concepto,
+          aplica la política y lo guarda. Del lado derecho verás el veredicto sellado.
+        </p>
 
         <div className="mode-tabs">
           <button className={'tab' + (mode === 'foto' ? ' active' : '')} onClick={() => setMode('foto')}>📷 Foto del ticket</button>

@@ -18,6 +18,11 @@ export default function Estado({ trip }) {
   return (
     <div>
       <div className="section-title">Estado del viaje · #{full.id} {full.destination} · {full.employee_name}</div>
+      <p className="screen-help">
+        Tu semáforo del viaje: cuánto llevas, cuánto te queda y qué necesita tu atención.
+        Haz clic en cualquier gasto para ver su desglose y corregir conceptos.
+        {full.perDiem && <> Referencia diaria: <b>{money(full.perDiem.reference)}</b>{full.perDiem.international ? ' (70 USD/día extranjero)' : ' (per diem nacional)'}.</>}
+      </p>
 
       <div className="kpis">
         <div className="ticket kpi"><span className="v">{money(full.advance_amount)}</span><span className="l">Anticipo</span></div>
