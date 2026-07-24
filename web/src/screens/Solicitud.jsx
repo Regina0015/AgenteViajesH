@@ -15,7 +15,7 @@ export default function Solicitud({ trips, reload, onCreated, onGoCapture }) {
 
   useEffect(() => {
     api('/policies')
-      .then((ps) => setPerDiem(ps.find((p) => p.code === 'POL-PERDIEM')?.params || null))
+      .then((ps) => setPerDiem(ps.find((p) => p.code === 'POL-DIA')?.params || null))
       .catch(() => {});
   }, []);
 
@@ -60,8 +60,8 @@ export default function Solicitud({ trips, reload, onCreated, onGoCapture }) {
     <div>
       <div className="section-title">Solicitud de viáticos</div>
       <p className="screen-help">
-        Paso 1 del viaje: pide tu anticipo. El presupuesto se sugiere solo con el per diem de la política
-        (700 MXN/día en México · 70 USD/día en el extranjero) y tu jefe lo aprueba con un clic.
+        Paso 1 del viaje: pide tu anticipo. El presupuesto se sugiere solo con la tarifa por día de la
+        política (700 MXN por día en México · 70 USD por día en el extranjero) y tu jefe lo aprueba con un clic.
       </p>
       <div className="cols">
         <div>
@@ -81,7 +81,7 @@ export default function Solicitud({ trips, reload, onCreated, onGoCapture }) {
             </div>
             <label className="check-line" style={{ color: 'var(--ink-soft)' }}>
               <input type="checkbox" checked={form.international} onChange={set('international')} />
-              🌎 Viaje al extranjero (per diem de 70 USD/día)
+              🌎 Viaje al extranjero (70 USD por día)
             </label>
             <label className="fld"><span>Presupuesto solicitado (MXN)</span>
               <input type="number" min="0" value={form.requested_amount} onChange={set('requested_amount')}

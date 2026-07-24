@@ -96,7 +96,7 @@ async function tripFull(id) {
 
   // Per diem: referencia diaria configurada (alerta, no rechazo)
   let perDiem = null;
-  const [pd] = await q(`SELECT params FROM policies WHERE code='POL-PERDIEM' AND active=1`);
+  const [pd] = await q(`SELECT params FROM policies WHERE code='POL-DIA' AND active=1`);
   if (pd) {
     const p = JSON.parse(pd.params || '{}');
     const ref = trip.international
@@ -109,7 +109,7 @@ async function tripFull(id) {
       if (tot > ref)
         alerts.push({
           level: 'warn',
-          text: `Día ${d}: gastaste $${tot.toFixed(2)}, arriba de la referencia diaria de $${ref.toFixed(2)} ${trip.international ? '(70 USD)' : '(700 MXN)'} [POL-PERDIEM].`,
+          text: `Día ${d}: gastaste $${tot.toFixed(2)}, arriba del presupuesto por día de $${ref.toFixed(2)} ${trip.international ? '(70 USD)' : '(700 MXN)'} [POL-DIA].`,
         });
     }
   }

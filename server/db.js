@@ -152,8 +152,10 @@ export async function initDb() {
 
 // Políticas agregadas después del seed inicial (INSERT solo si faltan)
 async function ensureNewPolicies() {
+  // Renombre (solo UPDATE, sin tocar datos): POL-PERDIEM → POL-DIA
+  await q(`UPDATE policies SET code='POL-DIA', name='Presupuesto diario por viaje' WHERE code='POL-PERDIEM'`);
   const NEW = [
-    ['POL-PERDIEM', 'Presupuesto diario de referencia (per diem)', 'per_diem', '*',
+    ['POL-DIA', 'Presupuesto diario por viaje', 'per_diem', '*',
       '{"mx_per_day":700,"ext_per_day_usd":70,"usd_mxn":18.5}'],
   ];
   for (const p of NEW) {
