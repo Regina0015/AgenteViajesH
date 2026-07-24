@@ -304,6 +304,14 @@ label.fld input, label.fld select { width: 100%; }
 .chat-input { display: flex; gap: 10px; }
 .chat-input input { flex: 1; font-family: var(--body); font-size: 15px; }
 
+.bubble-img { display: block; max-width: 220px; max-height: 180px; border-radius: 10px; margin-top: 8px; }
+.attach-preview {
+  display: flex; align-items: center; gap: 10px; font-size: 13px; color: var(--cream-muted);
+  background: var(--desk-2); border: 1px dashed var(--desk-line); border-radius: 10px; padding: 8px 12px;
+}
+.attach-preview img { width: 44px; height: 44px; object-fit: cover; border-radius: 8px; }
+.attach-preview .vbtn { border-color: var(--desk-line); color: var(--cream-muted); }
+
 /* Selector de día (Hoy / Ayer / Otra fecha) */
 .sug-chip.sel-day { background: var(--red); border-color: var(--red); color: #fff; font-weight: 600; }
 

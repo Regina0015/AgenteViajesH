@@ -27,6 +27,9 @@ Reglas:
 6. Si no puedes clasificar con confianza ≥ 0.7, marca ambiguous=true.
 7. NO apliques políticas ni decidas reembolsos: solo extrae y clasifica.
 8. Extrae también el comercio (merchant) y la fecha (YYYY-MM-DD) si son visibles; si no, null.
+9. CRÍTICO: NUNCA inventes conceptos ni montos. Si la imagen está en blanco, borrosa, no es un
+   ticket, o no puedes leer montos reales, devuelve "items": [] — el sistema le pedirá al usuario
+   una foto mejor. Solo reporta lo que realmente veas o lo que el texto diga explícitamente.
 
 Responde ÚNICAMENTE este JSON, sin texto adicional:
 {"merchant": "..." | null, "date": "YYYY-MM-DD" | null,
@@ -68,7 +71,8 @@ async function callAzure({ text, imageBase64, mime }) {
       let contentOut = data.choices?.[0]?.message?.content || '';
       contentOut = contentOut.replace(/^```(?:json)?\s*/i, '').replace(/```\s*$/, '').trim();
       const parsed = JSON.parse(contentOut);
-      if (!Array.isArray(parsed.items) || !parsed.items.length) throw new Error('El modelo no regresó conceptos');
+      // items: [] es respuesta VÁLIDA (= "no pude leer el ticket"); solo la ausencia del campo es error de formato
+      if (!Array.isArray(parsed.items)) throw new Error('Respuesta sin el campo items');
       return {
         merchant: parsed.merchant || null,
         date: parsed.date || null,
@@ -205,10 +209,15 @@ export async function extractItems({ text, imageBase64, mime }) {
   if (azureReady()) {
     try {
       const out = await callAzure({ text, imageBase64, mime });
+      // items vacíos = la IA no pudo leer conceptos reales: se respeta, NO se inventa nada
       return { mode: 'azure', model: CFG.deployment, note: null, ...out };
     } catch (err) {
-      console.error('[agent] Azure falló, usando analizador local:', err.message);
-      const out = imageBase64 && !text ? mockFromPhoto() : mockFromText(text || '');
+      console.error('[agent] Azure falló:', err.message);
+      if (imageBase64) {
+        // Con foto no caemos al analizador local (inventaría un ticket): mejor pedir reintento
+        return { mode: 'azure-error', model: CFG.deployment, note: '⚠️ La IA no pudo procesar la imagen.', merchant: null, date: null, items: [] };
+      }
+      const out = mockFromText(text || '');
       return { mode: 'mock-fallback', model: 'analizador local', note: '⚠️ La IA de Azure no respondió; se usó el analizador local.', ...out };
     }
   }

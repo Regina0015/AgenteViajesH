@@ -215,17 +215,17 @@ app.patch('/api/items/:id', async (req, res) => {
 });
 
 // ── Chat conversacional con Talón ─────────────────────────────────
-async function registerTextExpense(trip, text, expense_date) {
+async function registerTextExpense(trip, text, expense_date, media = null) {
   const t0 = Date.now();
-  const ex = await extractItems({ text, imageBase64: null, mime: null });
+  const ex = await extractItems({ text: text || null, imageBase64: media?.imageBase64 || null, mime: media?.mime || null });
   if (!ex.items.length) return null;
   const date = expense_date || ex.date || new Date().toISOString().slice(0, 10);
   const result = await applyPolicies({ items: ex.items, tripId: trip.id, expenseDate: date, hasReceipt: 1 });
   const summary = ex.note ? `${ex.note} ${result.summary}` : result.summary;
   const [e] = await q(
-    `INSERT INTO expenses(trip_id,description,merchant,expense_date,total,source,has_receipt,status,approved_amount,rejected_amount,review_amount,agent_summary)
-     VALUES($1,$2,$3,$4,$5,'chat',1,$6,$7,$8,$9,$10) RETURNING *`,
-    [trip.id, text.slice(0, 120), ex.merchant, date, result.total, result.status, result.approved, result.rejected, result.review, summary]
+    `INSERT INTO expenses(trip_id,description,merchant,expense_date,total,source,has_receipt,receipt_path,status,approved_amount,rejected_amount,review_amount,agent_summary)
+     VALUES($1,$2,$3,$4,$5,'chat',1,$6,$7,$8,$9,$10,$11) RETURNING *`,
+    [trip.id, (text || ex.merchant || 'Ticket por chat').slice(0, 120), ex.merchant, date, result.total, media?.receiptPath || null, result.status, result.approved, result.rejected, result.review, summary]
   );
   for (const it of result.items) {
     await q(
@@ -277,14 +277,39 @@ function mockChat(message, t) {
   return { reply: 'Soy Talón 🧾 Puedo decirte cuánto te queda, qué se rechazó y por qué, o registrar un gasto si me lo cuentas (ej. "gasté 350 en un taxi").', action: null };
 }
 
-app.post('/api/chat', async (req, res) => {
+app.post('/api/chat', upload.single('photo'), async (req, res) => {
   try {
-    const { trip_id, messages = [] } = req.body;
-    const t = await tripFull(trip_id);
+    let { trip_id, messages = [] } = req.body;
+    if (typeof messages === 'string') {
+      try { messages = JSON.parse(messages); } catch { messages = []; }
+    }
+    const t = await tripFull(Number(trip_id));
     if (!t) return res.status(404).json({ error: 'Viaje no encontrado' });
     t._policies = (await q('SELECT code,name,params FROM policies WHERE active=1')).map((p) => ({ ...p }));
 
     const lastUser = [...messages].reverse().find((m) => m.role === 'user')?.content || '';
+
+    // Foto adjunta como evidencia: registrar directo con la imagen en el expediente
+    if (req.file) {
+      const mime = req.file.mimetype || 'image/jpeg';
+      const receiptPath = `r${Date.now()}_${Math.random().toString(36).slice(2, 8)}${extFromMime(mime)}`;
+      fs.writeFileSync(path.join(UP, receiptPath), req.file.buffer);
+      const low = lastUser.toLowerCase();
+      const date = /antier|anteayer/.test(low)
+        ? new Date(Date.now() - 2 * 86400000).toISOString().slice(0, 10)
+        : /ayer/.test(low)
+          ? new Date(Date.now() - 86400000).toISOString().slice(0, 10)
+          : null;
+      const expense = await registerTextExpense(t, lastUser, date, {
+        imageBase64: req.file.buffer.toString('base64'),
+        mime,
+        receiptPath,
+      });
+      const reply = expense
+        ? 'Recibí tu evidencia 📎 y registré el gasto con este veredicto. La foto queda en el expediente y Finanzas podrá abrirla desde la mesa de revisión.'
+        : 'Recibí la foto pero no pude leer conceptos claros 😕 ¿La tomas de nuevo con más luz, o me cuentas el gasto con su monto?';
+      return res.json({ reply, expense });
+    }
     let out;
     if (azureReady()) {
       try {

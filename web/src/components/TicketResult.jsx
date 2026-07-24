@@ -20,8 +20,11 @@ export default function TicketResult({ expense, onUpdate, compact }) {
         <div>
           <h3>{e.merchant || e.description}</h3>
           <div className="sub">
-            {e.expense_date} · {e.source === 'photo' ? '📷 foto de ticket' : e.source === 'text' ? '⌨️ texto' : '📎 registro'}
+            {e.expense_date} · {e.source === 'photo' ? '📷 foto de ticket' : e.source === 'chat' ? '💬 por chat' : e.source === 'text' ? '⌨️ texto' : '📋 registro'}
             {!e.has_receipt ? ' · sin comprobante' : ''}
+            {e.receipt_path && (
+              <> · <a href={'/api/receipts/' + e.receipt_path} target="_blank" rel="noreferrer">📎 evidencia</a></>
+            )}
           </div>
         </div>
         <Stamp v={e.status} big={!compact} />
