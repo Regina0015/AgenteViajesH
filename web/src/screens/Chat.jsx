@@ -13,7 +13,7 @@ export default function Chat({ trip }) {
   const [msgs, setMsgs] = useState([
     {
       role: 'assistant',
-      content: `¡Hola! Soy Talón 🧾 tu agente de viáticos. Estoy viendo tu viaje #${trip.id} a ${trip.destination}. Pregúntame lo que necesites, cuéntame un gasto, o adjunta la foto del ticket con el 📎 y la guardo como evidencia.`,
+      content: `¡Hola Laura! Soy Talón 🧾 tu agente de viáticos. Estoy viendo tu viaje #${trip.id} a ${trip.destination}. Pregúntame lo que necesites, cuéntame un gasto, o adjunta la foto del ticket con el 📎 y la guardo como evidencia.`,
     },
   ]);
   const [text, setText] = useState('');

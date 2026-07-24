@@ -55,7 +55,7 @@ export default function Captura({ trip, onGoEstado }) {
 
   return (
     <div>
-      <div className="section-title">Registrar gasto · viaje #{trip.id} {trip.destination}</div>
+      <div className="section-title">Registrar gasto · Laura Martínez · viaje #{trip.id} {trip.destination}</div>
       <p className="screen-help">
         Toma la foto del ticket (o descríbelo con texto), dime de qué día es, y la IA hace el resto:
         separa cada concepto, aplica la política y lo guarda. Lo que quede en duda lo resuelve Finanzas
