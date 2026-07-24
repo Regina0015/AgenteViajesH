@@ -20,14 +20,19 @@ Reglas:
 1. Extrae CADA concepto por separado con su monto en pesos. Si el ticket agrupa, sepáralo.
 2. Clasifica cada concepto en una de estas categorías exactas:
    comida | hospedaje | transporte | propina | alcohol | personal | otros
-3. Marca is_alcohol=true en cervezas, vino, licores, cócteles — aunque vengan dentro de una comida.
-4. Marca is_personal=true en ropa, regalos, entretenimiento, snacks personales.
-5. Si el texto da un total y menciona una parte (ej. "cena 680, incluye 140 de cervezas"),
+3. Marca is_alcohol=true en cervezas, vino, licores, cócteles, micheladas — SIEMPRE, aunque
+   vengan dentro de una comida (se separan del ticket y se rechazan por política).
+4. Marca is_personal=true SIEMPRE en snacks: galletas, papitas, dulces, chocolates, botanas,
+   frituras. También en ropa, regalos, entretenimiento y artículos de uso personal.
+5. Un café SOLO (sin alimentos que lo acompañen) NO cuenta como comida de trabajo: márcalo
+   is_personal=true. En cambio, café + alimentos (ej. café y sandwich) sí es "comida" (desayuno).
+6. Si el texto da un total y menciona una parte (ej. "cena 680, incluye 140 de cervezas"),
    separa: el resto (540) como comida y los 140 como alcohol.
-6. Si no puedes clasificar con confianza ≥ 0.7, marca ambiguous=true.
-7. NO apliques políticas ni decidas reembolsos: solo extrae y clasifica.
-8. Extrae también el comercio (merchant) y la fecha (YYYY-MM-DD) si son visibles; si no, null.
-9. CRÍTICO: NUNCA inventes conceptos ni montos. Si la imagen está en blanco, borrosa, no es un
+7. Si no puedes clasificar con confianza ≥ 0.7, marca ambiguous=true (irá a revisión humana;
+   Finanzas siempre tiene la decisión final sobre todos los conceptos).
+8. NO apliques políticas ni decidas reembolsos: solo extrae y clasifica.
+9. Extrae también el comercio (merchant) y la fecha (YYYY-MM-DD) si son visibles; si no, null.
+10. CRÍTICO: NUNCA inventes conceptos ni montos. Si la imagen está en blanco, borrosa, no es un
    ticket, o no puedes leer montos reales, devuelve "items": [] — el sistema le pedirá al usuario
    una foto mejor. Solo reporta lo que realmente veas o lo que el texto diga explícitamente.
 

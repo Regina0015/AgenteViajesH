@@ -131,18 +131,37 @@ export default function Revision() {
           if (!byTrip.has(e.trip_id)) byTrip.set(e.trip_id, { e0: e, list: [] });
           byTrip.get(e.trip_id).list.push(e);
         }
-        return [...byTrip.values()].map(({ e0, list }) => (
-          <details key={e0.trip_id} className="trip-fold" open={list.some((x) => x.status === 'review')}>
-            <summary>
-              Viaje #{e0.trip_id} · {e0.destination} · {e0.employee_name} — {list.length} gasto{list.length > 1 ? 's' : ''}
-            </summary>
-            <div className="expense-list" style={{ marginTop: 10 }}>
-              {list.map((e) => (
-                <TicketResult key={e.id} expense={e} compact reviewer="Marco Ruiz" onUpdate={() => load()} />
+        const dayName = (d) => {
+          if (!d) return 'Sin fecha';
+          const s = new Date(d + 'T12:00:00').toLocaleDateString('es-MX', { weekday: 'long', day: 'numeric', month: 'long' });
+          return s.charAt(0).toUpperCase() + s.slice(1);
+        };
+        return [...byTrip.values()].map(({ e0, list }) => {
+          const byDay = new Map();
+          for (const e of list) {
+            const d = e.expense_date || '';
+            if (!byDay.has(d)) byDay.set(d, []);
+            byDay.get(d).push(e);
+          }
+          const days = [...byDay.entries()].sort((a, b) => (a[0] < b[0] ? -1 : 1));
+          return (
+            <details key={e0.trip_id} className="trip-fold" open={list.some((x) => x.status === 'review')}>
+              <summary>
+                Viaje #{e0.trip_id} · {e0.destination} · {e0.employee_name} — {list.length} gasto{list.length > 1 ? 's' : ''}
+              </summary>
+              {days.map(([d, exps]) => (
+                <div key={d} style={{ marginTop: 12 }}>
+                  <div className="day-head"><span>📅 {dayName(d)}</span></div>
+                  <div className="expense-list">
+                    {exps.map((e) => (
+                      <TicketResult key={e.id} expense={e} compact reviewer="Marco Ruiz" onUpdate={() => load()} />
+                    ))}
+                  </div>
+                </div>
               ))}
-            </div>
-          </details>
-        ));
+            </details>
+          );
+        });
       })()}
 
       {data.resolved.length > 0 && (
