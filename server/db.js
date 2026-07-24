@@ -4,7 +4,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-export const isPg = !!process.env.DATABASE_URL;
+export let isPg = !!process.env.DATABASE_URL;
 
 let pool = null; // pg
 let sq = null;   // sqlite
@@ -75,7 +75,9 @@ const TABLES = [
     verdict TEXT,
     policy_code TEXT,
     reason TEXT,
-    manually_corrected INT DEFAULT 0
+    manually_corrected INT DEFAULT 0,
+    reviewed_by TEXT,
+    review_note TEXT
   )`,
   `CREATE TABLE IF NOT EXISTS liquidations (
     id SERIAL PRIMARY KEY,
@@ -113,21 +115,35 @@ function ddl(s) {
 
 export async function initDb() {
   if (isPg) {
-    const pg = (await import('pg')).default;
-    pg.types.setTypeParser(1700, parseFloat); // NUMERIC → number
-    pool = new pg.Pool({
-      connectionString: process.env.DATABASE_URL,
-      ssl: { rejectUnauthorized: false }, // Aiven exige TLS; para el hack no validamos CA
-      max: 5,
-    });
-    await pool.query('SELECT 1');
-    console.log('[db] ✅ Conectado a PostgreSQL (Aiven)');
-  } else {
+    try {
+      const pg = (await import('pg')).default;
+      pg.types.setTypeParser(1700, parseFloat); // NUMERIC → number
+      pool = new pg.Pool({
+        connectionString: process.env.DATABASE_URL,
+        ssl: { rejectUnauthorized: false }, // Aiven exige TLS; para el hack no validamos CA
+        max: 5,
+        connectionTimeoutMillis: 10000,
+      });
+      await pool.query('SELECT 1');
+      console.log('[db] ✅ Conectado a PostgreSQL (Aiven)');
+    } catch (err) {
+      console.error('[db] ❌ No pude conectar a Aiven:', err.message);
+      console.error('[db] ⚠️  Cayendo a SQLite local para no detener el desarrollo.');
+      console.error('[db]     Revisa en la consola de Aiven que el servicio esté "Running" y sin IP allowlist.');
+      isPg = false;
+      pool = null;
+    }
+  }
+  if (!isPg) {
     const { DatabaseSync } = await import('node:sqlite');
     sq = new DatabaseSync(path.join(__dirname, 'talon.db'));
     console.log('[db] ⚠️  DATABASE_URL vacío → usando SQLite local (fallback de desarrollo). Pega el Service URI de Aiven en .env para usar Postgres.');
   }
   for (const t of TABLES) await q(ddl(t));
+  // Migraciones aditivas para BDs creadas antes (nunca destructivas)
+  for (const col of ['reviewed_by TEXT', 'review_note TEXT']) {
+    try { await q(`ALTER TABLE expense_items ADD COLUMN ${col}`); } catch { /* ya existe */ }
+  }
   await seedIfEmpty();
 }
 

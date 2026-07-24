@@ -47,7 +47,9 @@ export default function TicketResult({ expense, onUpdate, compact }) {
           </div>
           <div className="item-reason">
             {it.reason} {it.policy_code ? <b>[{it.policy_code}]</b> : null}
-            {it.manually_corrected ? ' · ✍️ corregido manualmente' : ''}
+            {it.review_note
+              ? ` · ✍️ ${it.reviewed_by || 'Revisor'}: “${it.review_note}”`
+              : it.manually_corrected ? ' · ✍️ corregido manualmente' : ''}
           </div>
         </div>
       ))}

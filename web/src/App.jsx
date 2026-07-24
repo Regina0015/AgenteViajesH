@@ -4,12 +4,14 @@ import Solicitud from './screens/Solicitud.jsx';
 import Captura from './screens/Captura.jsx';
 import Estado from './screens/Estado.jsx';
 import Liquidacion from './screens/Liquidacion.jsx';
+import Revision from './screens/Revision.jsx';
 
 const VIEWS = [
   ['solicitud', '01', 'Solicitud'],
   ['captura', '02', 'Capturar gasto'],
   ['estado', '03', 'Estado del viaje'],
   ['liquidacion', '04', 'Liquidación'],
+  ['revision', '05', 'Revisión'],
 ];
 
 export default function App() {
@@ -83,7 +85,8 @@ export default function App() {
       {view === 'captura' && trip && <Captura trip={trip} />}
       {view === 'estado' && trip && <Estado trip={trip} key={'e' + trip.id} />}
       {view === 'liquidacion' && trip && <Liquidacion trip={trip} reload={loadTrips} key={'l' + trip.id} />}
-      {!trip && view !== 'solicitud' && (
+      {view === 'revision' && <Revision />}
+      {!trip && view !== 'solicitud' && view !== 'revision' && (
         <p style={{ color: 'var(--cream-muted)' }}>No hay viajes todavía — crea una solicitud primero.</p>
       )}
     </div>

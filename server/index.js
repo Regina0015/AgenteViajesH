@@ -168,9 +168,10 @@ app.post('/api/trips/:id/expenses', upload.single('photo'), async (req, res) => 
   }
 });
 
-// Corrección manual de un concepto (empleado o revisor)
+// Corrección manual de un concepto (empleado o revisor).
+// Conserva la explicación del agente y guarda aparte la justificación humana.
 app.patch('/api/items/:id', async (req, res) => {
-  const { verdict, category } = req.body;
+  const { verdict, category, note, reviewer } = req.body;
   if (verdict && !['approved', 'rejected', 'review'].includes(verdict))
     return res.status(400).json({ error: 'Veredicto inválido' });
   const [item] = await q('SELECT * FROM expense_items WHERE id=$1', [req.params.id]);
@@ -178,8 +179,9 @@ app.patch('/api/items/:id', async (req, res) => {
 
   await q(
     `UPDATE expense_items SET verdict=COALESCE($1,verdict), category=COALESCE($2,category),
-     manually_corrected=1, reason=$3 WHERE id=$4`,
-    [verdict || null, category || null, 'Corregido manualmente (revisión humana).', item.id]
+     manually_corrected=1, review_note=COALESCE($3,review_note), reviewed_by=COALESCE($4,reviewed_by)
+     WHERE id=$5`,
+    [verdict || null, category || null, note || null, reviewer || null, item.id]
   );
   const items = await q('SELECT * FROM expense_items WHERE expense_id=$1 ORDER BY id', [item.expense_id]);
   const t = computeTotals(items);
@@ -190,6 +192,28 @@ app.patch('/api/items/:id', async (req, res) => {
   );
   e.items = items;
   res.json(e);
+});
+
+// ── Dashboard del revisor (finanzas) ──────────────────────────────
+app.get('/api/review', async (_req, res) => {
+  const base = `SELECT ei.*, e.merchant, e.description AS expense_description, e.expense_date,
+      e.receipt_path, e.source, e.trip_id, t.destination, emp.name AS employee_name
+    FROM expense_items ei
+    JOIN expenses e ON e.id = ei.expense_id
+    JOIN trips t ON t.id = e.trip_id
+    JOIN employees emp ON emp.id = t.employee_id`;
+  const pending = await q(base + ` WHERE ei.verdict='review' ORDER BY e.expense_date, ei.id`);
+  const resolved = await q(
+    base + ` WHERE ei.manually_corrected=1 AND ei.verdict<>'review' ORDER BY ei.id DESC LIMIT 20`
+  );
+  const sums = await q(
+    `SELECT verdict, COUNT(*) AS n, COALESCE(SUM(amount),0) AS s FROM expense_items GROUP BY verdict`
+  );
+  const byCat = await q(
+    `SELECT category, COUNT(*) AS n, COALESCE(SUM(amount),0) AS s
+     FROM expense_items WHERE verdict='rejected' GROUP BY category ORDER BY s DESC`
+  );
+  res.json({ pending, resolved, sums, byCat });
 });
 
 // ── Liquidación ───────────────────────────────────────────────────
