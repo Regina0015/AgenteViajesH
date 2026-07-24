@@ -120,6 +120,31 @@ export default function Revision() {
         ))}
       </div>
 
+      <div className="section-title">Todos los gastos · decisión final de Finanzas</div>
+      <p className="screen-help">
+        Aquí está todo lo que el agente ya decidió — aprobado o rechazado. Finanzas puede corregir
+        cualquier veredicto con los botones ✓ / ✗ / ? de cada concepto; el cambio queda firmado.
+      </p>
+      {(() => {
+        const byTrip = new Map();
+        for (const e of data.expenses || []) {
+          if (!byTrip.has(e.trip_id)) byTrip.set(e.trip_id, { e0: e, list: [] });
+          byTrip.get(e.trip_id).list.push(e);
+        }
+        return [...byTrip.values()].map(({ e0, list }) => (
+          <details key={e0.trip_id} className="trip-fold" open={list.some((x) => x.status === 'review')}>
+            <summary>
+              Viaje #{e0.trip_id} · {e0.destination} · {e0.employee_name} — {list.length} gasto{list.length > 1 ? 's' : ''}
+            </summary>
+            <div className="expense-list" style={{ marginTop: 10 }}>
+              {list.map((e) => (
+                <TicketResult key={e.id} expense={e} compact reviewer="Marco Ruiz" onUpdate={() => load()} />
+              ))}
+            </div>
+          </details>
+        ));
+      })()}
+
       {data.resolved.length > 0 && (
         <>
           <div className="section-title">Resueltos recientemente</div>

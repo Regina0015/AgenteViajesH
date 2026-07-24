@@ -3,12 +3,12 @@ import Stamp from './Stamp.jsx';
 
 // Renderiza un gasto como ticket térmico, con veredicto por concepto
 // y botones de corrección manual (revisión humana).
-export default function TicketResult({ expense, onUpdate, compact }) {
+export default function TicketResult({ expense, onUpdate, compact, reviewer }) {
   async function setVerdict(itemId, verdict) {
     const updated = await api('/items/' + itemId, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ verdict }),
+      body: JSON.stringify({ verdict, reviewer: reviewer || null }),
     });
     onUpdate?.(updated);
   }

@@ -353,7 +353,20 @@ app.get('/api/review', async (_req, res) => {
     `SELECT category, COUNT(*) AS n, COALESCE(SUM(amount),0) AS s
      FROM expense_items WHERE verdict='rejected' GROUP BY category ORDER BY s DESC`
   );
-  res.json({ pending, resolved, sums, byCat });
+  // Todos los gastos: Finanzas tiene la decisión final sobre cualquier veredicto
+  const expenses = await q(
+    `SELECT e.*, t.destination, t.status AS trip_status, emp.name AS employee_name
+     FROM expenses e JOIN trips t ON t.id=e.trip_id JOIN employees emp ON emp.id=t.employee_id
+     ORDER BY t.id, e.expense_date, e.id`
+  );
+  const allItems = expenses.length
+    ? await q(
+        `SELECT * FROM expense_items WHERE expense_id IN (${expenses.map((_, i) => '$' + (i + 1)).join(',')}) ORDER BY id`,
+        expenses.map((e) => e.id)
+      )
+    : [];
+  for (const e of expenses) e.items = allItems.filter((i) => i.expense_id === e.id);
+  res.json({ pending, resolved, sums, byCat, expenses });
 });
 
 // ── Liquidación ───────────────────────────────────────────────────

@@ -331,6 +331,17 @@ label.fld input, label.fld select { width: 100%; }
 /* Acento visual del modo revisor: sello verde en lugar de rojo */
 .revisor-mode .brand h1 .tld { color: var(--green); }
 
+/* Plegado por viaje en la mesa de revisión */
+.trip-fold {
+  background: var(--desk-2); border: 1px solid var(--desk-line);
+  border-radius: 12px; padding: 12px 16px; margin-bottom: 12px;
+}
+.trip-fold summary {
+  cursor: pointer; font-family: var(--disp); font-stretch: condensed; font-weight: 700;
+  text-transform: uppercase; letter-spacing: .08em; font-size: 13.5px; color: var(--cream-text);
+}
+.trip-fold[open] summary { margin-bottom: 6px; }
+
 .trip-list { display: grid; gap: 12px; }
 .expense-list { display: grid; gap: 14px; }
 .result-pop { animation: pop .35s cubic-bezier(.2,.9,.3,1.2); }
