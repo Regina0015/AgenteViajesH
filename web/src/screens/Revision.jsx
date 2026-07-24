@@ -1,5 +1,6 @@
 import { useEffect, useState, useCallback } from 'react';
 import { api, money, CATEGORIES } from '../api.js';
+import TicketResult from '../components/TicketResult.jsx';
 
 // Dashboard del revisor (finanzas): cola de conceptos en revisión de TODOS los
 // viajes, decisión PASA / NO PASA con justificación, y panorama de rechazos.

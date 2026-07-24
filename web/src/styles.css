@@ -331,6 +331,15 @@ label.fld input, label.fld select { width: 100%; }
 /* Acento visual del modo revisor: sello verde en lugar de rojo */
 .revisor-mode .brand h1 .tld { color: var(--green); }
 
+/* Comentario del revisor dentro de un ticket */
+.rev-note {
+  width: 100%; margin-top: 10px;
+  background: rgba(28,27,24,.06); color: var(--ink);
+  border: 1px dashed rgba(28,27,24,.35); border-radius: 8px;
+  padding: 8px 10px; font-family: var(--body); font-size: 13px;
+}
+.rev-note::placeholder { color: var(--ink-soft); }
+
 /* Plegado por viaje en la mesa de revisión */
 .trip-fold {
   background: var(--desk-2); border: 1px solid var(--desk-line);

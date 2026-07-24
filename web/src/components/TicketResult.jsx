@@ -1,15 +1,19 @@
+import { useState } from 'react';
 import { api, money } from '../api.js';
 import Stamp from './Stamp.jsx';
 
-// Renderiza un gasto como ticket térmico, con veredicto por concepto
-// y botones de corrección manual (revisión humana).
+// Renderiza un gasto como ticket térmico, con veredicto por concepto.
+// Con `reviewer` + `onUpdate`, muestra los botones de decisión final (✓/✗/?)
+// y un campo de comentario que se firma junto con la decisión.
 export default function TicketResult({ expense, onUpdate, compact, reviewer }) {
+  const [note, setNote] = useState('');
   async function setVerdict(itemId, verdict) {
     const updated = await api('/items/' + itemId, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ verdict, reviewer: reviewer || null }),
+      body: JSON.stringify({ verdict, reviewer: reviewer || null, note: reviewer ? note.trim() || null : null }),
     });
+    if (reviewer) setNote('');
     onUpdate?.(updated);
   }
 
@@ -56,6 +60,15 @@ export default function TicketResult({ expense, onUpdate, compact, reviewer }) {
           </div>
         </div>
       ))}
+
+      {reviewer && onUpdate && (
+        <input
+          className="rev-note"
+          placeholder="💬 Comentario del revisor — se guarda con tu próxima decisión ✓ / ✗ / ?"
+          value={note}
+          onChange={(ev) => setNote(ev.target.value)}
+        />
+      )}
 
       <hr className="dashed" />
       <div className="row"><span className="lbl green">Aprobado</span><span className="val green">{money(e.approved_amount)}</span></div>
