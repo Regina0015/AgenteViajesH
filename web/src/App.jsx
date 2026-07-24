@@ -87,7 +87,7 @@ export default function App() {
             <span className="tag">Agente de gastos de viaje</span>
           </div>
           <div className="chips">
-            <span className="chip">👤 Laura Martínez · Compradora</span>
+            <span className="chip">👤 Laura Martínez · Compras</span>
             {healthChips}
             <a className="chip" href="#revisor" target="_blank" rel="noreferrer" style={{ textDecoration: 'none' }}>
               🧑‍💼 Mesa de revisión ↗

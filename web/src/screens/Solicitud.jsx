@@ -67,7 +67,7 @@ export default function Solicitud({ trips, reload, onCreated, onGoCapture }) {
         <div>
           <div className="ticket punched-top punched-bottom">
             <h3>Nueva solicitud de anticipo</h3>
-            <div className="sub">Empleada: Laura Martínez · Compradora</div>
+            <div className="sub">Empleada: Laura Martínez · Compras</div>
             <hr className="dashed" />
             <label className="fld"><span>Destino</span>
               <input value={form.destination} onChange={set('destination')} placeholder="Monterrey, NL" /></label>
