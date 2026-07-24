@@ -327,14 +327,19 @@ app.post('/api/chat', upload.single('photo'), async (req, res) => {
         : /ayer/.test(low)
           ? new Date(Date.now() - 86400000).toISOString().slice(0, 10)
           : null;
-      const expense = await registerTextExpense(t, lastUser, date, {
+      let expense = await registerTextExpense(t, lastUser, date, {
         imageBase64: req.file.buffer.toString('base64'),
         mime,
         receiptPath,
       });
+      // Respaldo: si la foto no se pudo leer pero el texto trae el monto,
+      // registrar desde el texto conservando la foto como evidencia.
+      if (!expense && /\d/.test(lastUser)) {
+        expense = await registerTextExpense(t, lastUser, date, { receiptPath });
+      }
       const reply = expense
         ? 'Recibí tu evidencia 📎 y registré el gasto con este veredicto. La foto queda en el expediente y Finanzas podrá abrirla desde la mesa de revisión.'
-        : 'Recibí la foto pero no pude leer conceptos claros 😕 ¿La tomas de nuevo con más luz, o me cuentas el gasto con su monto?';
+        : 'No pude leer el ticket 😕 Vuelve a mandarme la foto junto con el monto y qué fue (ej. «taxi del aeropuerto 250») y lo registro con tu foto como evidencia.';
       return res.json({ reply, expense });
     }
     let out;

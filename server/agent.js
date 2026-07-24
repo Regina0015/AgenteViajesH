@@ -18,6 +18,9 @@ o la DESCRIPCIÓN en texto libre de un gasto. Tu trabajo es extraer los concepto
 
 Reglas:
 1. Extrae CADA concepto por separado con su monto en pesos. Si el ticket agrupa, sepáralo.
+   IMPORTANTE: los tickets simples con UN solo importe (taxi, Uber, estacionamiento, casetas,
+   recibos de sitio) SON VÁLIDOS: crea UN concepto con ese total y su categoría
+   (ej. recibo de taxi con TOTAL $250 → {"description":"Servicio de taxi","amount":250,"category":"transporte"}).
 2. Clasifica cada concepto en una de estas categorías exactas:
    comida | hospedaje | transporte | propina | alcohol | personal | otros
 3. Marca is_alcohol=true en cervezas, vino, licores, cócteles, micheladas — SIEMPRE, aunque
