@@ -1,0 +1,15 @@
+{
+  "name": "talon",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Talón · Agente de gastos de viaje — Hackatón TGIF HEB México",
+  "scripts": {
+    "setup": "npm install && npm --prefix server install && npm --prefix web install",
+    "dev": "concurrently -n api,web -c red,green \"npm --prefix server run dev\" \"npm --prefix web run dev\"",
+    "api": "npm --prefix server run dev",
+    "web": "npm --prefix web run dev"
+  },
+  "devDependencies": {
+    "concurrently": "^9.1.0"
+  }
+}
